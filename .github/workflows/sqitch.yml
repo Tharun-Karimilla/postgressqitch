@@ -8,6 +8,7 @@ on:
       - 'verify/**'
       - 'sqitch.plan'
       - '.github/workflows/**'
+      - '.secrets'
 
 jobs:
   deploy:
@@ -16,6 +17,10 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v3
+
+    - name: Debug DB_URI
+      run: |
+        echo "::notice ::DB_URI from secrets = $DB_URI"env | grep DB_URI || echo "DB_URI not found in env"
    
     - name: Print DB_URI
       run: echo $DB_URI

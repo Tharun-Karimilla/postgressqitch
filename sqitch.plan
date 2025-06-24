@@ -1,3 +1,6 @@
+%project = postgressqitch
+%uri = https://github.com/Tharun-Karimilla/postgressqitch.git
+%syntax-version = 1.0.0
 
 create_users
 create_orders

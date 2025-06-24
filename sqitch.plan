@@ -4,3 +4,8 @@
 create_users 2025-06-24T14:52:26Z Tharun Karimilla <throney@tharun-inspiron-3583> # Add users table
 create_orders [create_users] 2025-06-24T14:52:27Z Tharun Karimilla <throney@tharun-inspiron-3583> # Add orders table
 create_payments [create_orders] 2025-06-24T14:52:27Z Tharun Karimilla <throney@tharun-inspiron-3583> # Add payments table
+create_schema_tharun 2025-06-24T18:36:09Z Tharun Karimilla <throney@tharun-inspiron-3583> # Adding schema tharun
+create_books 2025-06-24T18:36:33Z Tharun Karimilla <throney@tharun-inspiron-3583> # Adding table books
+create_movies 2025-06-24T18:36:46Z Tharun Karimilla <throney@tharun-inspiron-3583> # Adding table movies
+create_userbm 2025-06-24T18:37:02Z Tharun Karimilla <throney@tharun-inspiron-3583> # Adding table userbm
+create_index_users 2025-06-24T18:37:36Z Tharun Karimilla <throney@tharun-inspiron-3583> # Adding indes to tharun.userbm

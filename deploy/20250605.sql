@@ -1,0 +1,1 @@
+CREATE VIEW monthly_summary AS SELECT date_trunc('month', NOW()) as month;

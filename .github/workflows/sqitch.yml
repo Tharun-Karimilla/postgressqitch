@@ -10,9 +10,13 @@ on:
       - '.github/workflows/**'
       - '.secrets'
 
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
+    env:
+      DB_URI: ${{ secrets.DB_URI }}  # ✅ Add this line to pass secrets into env
 
     steps:
     - name: Checkout repository

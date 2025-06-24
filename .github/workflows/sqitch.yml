@@ -16,6 +16,9 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v3
+   
+    - name: Print DB_URI
+      run: echo $DB_URI
 
     - name: Install Sqitch and PostgreSQL client
       run: |

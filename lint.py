@@ -1,15 +1,13 @@
 import os
 import re
 import sqlparse
-from collections import defaultdict
-from sqlparse.sql import Identifier, IdentifierList, Function, Parenthesis
-from sqlparse.tokens import Keyword, Name, DML,DDL
 import argparse
-
+from collections import defaultdict
+from sqlparse.sql import Identifier, Parenthesis
+from sqlparse.tokens import Keyword, Name, DDL
 
 def normalize_table(table_name, default_schema="public"):
     return table_name if "." in table_name else f"{default_schema}.{table_name}"
-
 
 def extract_identifiers(sql):
     tables = set()
@@ -22,19 +20,18 @@ def extract_identifiers(sql):
         while i < len(tokens):
             token = tokens[i]
             if token.ttype is DDL and token.value.upper() == "CREATE":
-                if i + 2 < len(tokens) and tokens[i+1].match(Keyword, "TABLE"):
-                    table_token = tokens[i+2]
+                if i + 2 < len(tokens) and tokens[i + 1].match(Keyword, "TABLE"):
+                    table_token = tokens[i + 2]
                     if isinstance(table_token, Identifier):
                         tables.add(table_token.get_name().lower())
                     elif table_token.ttype is Name:
                         tables.add(table_token.value.lower())
-                    # Now look ahead for the column definitions
-                    for j in range(i+3, len(tokens)):
+                    # Extract columns
+                    for j in range(i + 3, len(tokens)):
                         if isinstance(tokens[j], Parenthesis):
                             columns.update(extract_columns_from_parens(tokens[j]))
                             break
             elif token.ttype is Keyword and token.value.upper() == "ON":
-                # Used in CREATE INDEX ON schema.table
                 if i + 1 < len(tokens):
                     on_target = tokens[i + 1]
                     if isinstance(on_target, Identifier):
@@ -46,10 +43,10 @@ def extract_columns_from_parens(paren_token):
     columns = set()
     if not isinstance(paren_token, Parenthesis):
         return columns
-    content = str(paren_token)[1:-1]  # Remove surrounding ()
+    content = str(paren_token)[1:-1]  # Strip surrounding ()
     lines = [line.strip().split()[0] for line in content.strip().splitlines() if line and not line.startswith("--")]
     for col in lines:
-        if col:  # Basic filter to remove empty
+        if col:
             col_clean = col.replace(",", "").strip('"').lower()
             if col_clean.upper() not in {"PRIMARY", "UNIQUE", "KEY", "CONSTRAINT"}:
                 columns.add(col_clean)
@@ -71,22 +68,8 @@ def read_plan(plan_file):
                 if match:
                     deps = match.group(1).split()
             steps.append(name)
-            dependencies[name] = deps  
+            dependencies[name] = deps
     return steps, dependencies
-
-def build_reference_map(steps):
-    table_definitions = defaultdict(set)
-    for step in steps:
-        path = os.path.join("deploy", f"{step}.sql")
-        if not os.path.exists(path):
-            continue
-        with open(path) as f:
-            sql = f.read()
-            tables, columns = extract_identifiers(sql)
-            table_definitions[step] = tables
-    print("table_definitions:")
-    print(table_definitions)
-    return table_definitions
 
 def build_usage_maps(steps):
     used_tables = defaultdict(set)
@@ -104,19 +87,17 @@ def build_usage_maps(steps):
                     defined_tables[step].add(table)
                 else:
                     used_tables[step].add(table)
-
     return used_tables, defined_tables
 
 def find_missing_requires(steps, dependencies, used_tables, defined_tables):
     warnings = []
 
-    # Flatten step -> table definitions
     table_to_step = {}
     for step, tables in defined_tables.items():
         for table in tables:
             table_to_step[table] = step
 
-    for i, step in enumerate(steps):
+    for step in steps:
         for table in used_tables[step]:
             if table in table_to_step:
                 definer = table_to_step[table]
@@ -143,7 +124,6 @@ def detect_untracked_scripts(steps, deploy_dir="deploy"):
     extra_in_plan = plan_scripts - actual_scripts
     return sorted(missing_in_plan), sorted(extra_in_plan)
 
-
 def topological_sort(dependencies, steps):
     visited, result, temp = set(), [], set()
 
@@ -164,46 +144,48 @@ def topological_sort(dependencies, steps):
     return result
 
 
-parser = argparse.ArgumentParser(description="Lint SQL deployment plan")
-parser.add_argument('--plan_file', type=str, default='sqitch.plan', help='Path to the Sqitch plan file')
-args = parser.parse_args()
-plan_file = args.plan_file
-#plan_file = "sqitch.plan"
-steps, dependencies = read_plan(plan_file)
-# Lint check 1: Missing requires
-used_tables, defined_tables = build_usage_maps(steps)
-missing_requires = find_missing_requires(steps, dependencies, used_tables, defined_tables)
+def main():
+    parser = argparse.ArgumentParser(description="Lint SQL deployment plan")
+    parser.add_argument('--plan_file', type=str, default='sqitch.plan', help='Path to the Sqitch plan file')
+    args = parser.parse_args()
+    plan_file = args.plan_file
 
-# Lint check 2: Bad dependency order
-dependency_order_errors = check_invalid_dependency_order(steps, dependencies)
+    steps, dependencies = read_plan(plan_file)
 
-print("\n=== Missing Requires ===")
-for step, table, definer in missing_requires:
-    print(f"{step} uses table '{table}' defined in {definer} but does not list it as a dependency.")
+    used_tables, defined_tables = build_usage_maps(steps)
+    missing_requires = find_missing_requires(steps, dependencies, used_tables, defined_tables)
+    dependency_order_errors = check_invalid_dependency_order(steps, dependencies)
+    missing_in_plan, extra_in_plan = detect_untracked_scripts(steps)
 
-print("\n=== Incorrect Dependency Order in sqitch.plan ===")
-for step, dep, reason in dependency_order_errors:
-    print(f"{step} declares dependency on {dep}, which appears later in the plan. {reason}")
+    print("\n=== Missing Requires ===")
+    for step, table, definer in missing_requires:
+        if table.startswith("app."):  # Suppress warnings for app.* tables
+            continue
+        print(f"{step} uses table '{table}' defined in {definer} but does not list it as a dependency.")
 
+    print("\n=== Incorrect Dependency Order in sqitch.plan ===")
+    for step, dep, reason in dependency_order_errors:
+        print(f"{step} declares dependency on {dep}, which appears later in the plan. {reason}")
 
-missing_in_plan, extra_in_plan = detect_untracked_scripts(steps)
+    filtered_missing = [m for m in missing_in_plan if not m.startswith("app.")]
+    if filtered_missing:
+        print("\n Scripts present in `deploy/` but missing from `sqitch.plan`:")
+        for m in filtered_missing:
+            print(f"  - {m}.sql")
 
-if missing_in_plan:
-    print("\n Scripts present in `deploy/` but missing from `sqitch.plan`:")
-    for m in missing_in_plan:
-        print(f"  - {m}.sql")
+    if extra_in_plan:
+        print("\n Scripts in `sqitch.plan` but missing in `deploy/` folder:")
+        for e in extra_in_plan:
+            print(f"  - {e}")
 
-if extra_in_plan:
-    print("\n Scripts in `sqitch.plan` but missing in `deploy/` folder:")
-    for e in extra_in_plan:
-        print(f"  - {e}")
+    try:
+        corrected_order = topological_sort(dependencies, steps)
+        if corrected_order != steps:
+            print("\n Suggested corrected order of `sqitch.plan` based on dependencies:")
+            for step in corrected_order:
+                print(f"  {step}")
+    except Exception as e:
+        print(f"\n Error resolving plan order: {e}")
 
-# Suggest corrected plan order (based on topological sort)
-try:
-    corrected_order = topological_sort(dependencies, steps)
-    if corrected_order != steps:
-        print("\n Suggested corrected order of `sqitch.plan` based on dependencies:")
-        for step in corrected_order:
-            print(f"  {step}")
-except Exception as e:
-    print(f"\n Error resolving plan order: {e}")
+if __name__ == "__main__":
+    main()

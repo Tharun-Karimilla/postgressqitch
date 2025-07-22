@@ -11,10 +11,10 @@ def split_migra_sql(input_file, output_dir):
     # Normalize line endings
     sql_text = sql_text.replace('\r\n', '\n')
 
-    # Split SQL by semicolon followed by optional whitespace and newline (simple heuristic)
+    # Split SQL by semicolon followed by newline (simple statement boundary)
     statements = re.split(r';\s*\n', sql_text)
 
-    # Regex to detect statement components (action, object type, object name)
+    # Regex to capture statement action and object type and name (if exists)
     statement_regex = re.compile(
         r'^(CREATE|ALTER|DROP|COMMENT|GRANT|REVOKE|SET)\s+'
         r'(EXTENSION|ROLE|DATABASE|SCHEMA|TABLE|INDEX|VIEW|MATERIALIZED VIEW|SEQUENCE|FUNCTION|TRIGGER|TYPE|DOMAIN|AGGREGATE|COLUMN|TABLESPACE|USER|CAST|LANGUAGE|CONVERSION|FOREIGN DATA WRAPPER|SERVER|USER MAPPING|EVENT TRIGGER|POLICY|PUBLICATION|SUBSCRIPTION|STATISTICS|TEXT SEARCH CONFIGURATION|TEXT SEARCH DICTIONARY|TEXT SEARCH PARSER|TEXT SEARCH TEMPLATE|TRANSFORMATION|COLLATION|FAMILY|TABLESPACE)?\s*'
@@ -49,9 +49,10 @@ def split_migra_sql(input_file, output_dir):
         counter += 1
 
 if __name__ == "__main__":
-    migra_output_file = "migra_output.sql"  # Change to your migra output filename
-    output_folder = "migra_statements"     # Output directory for split files
+    # Adjust these paths as necessary
+    migra_output_file = "migra_output.sql"
+    output_folder = "migra_statements"
 
     split_migra_sql(migra_output_file, output_folder)
     print(f"Splitting complete. Files saved in folder: {output_folder}")
-  
+    

@@ -1,0 +1,20 @@
+Object Type,Deployment Behavior,QC Before Deployment,Can Cause Data Loss,Notes
+Tables,Schema updated. Columns added/removed.,"Check for dropped/changed columns, identity, nullability",Yes,Use /p:BlockOnPossibleDataLoss=true
+Indexes,Dropped and recreated if changed,Review deploy plan for performance impact,No,May cause perf issues on large tables
+Foreign Keys,Recreated if changed,Validate references exist and are correct,Yes,Ensure valid data before deploy
+Primary Keys,Recreated if changed,Check for name/definition mismatch,Yes,Match SSDT model exactly
+Stored Procedures,Replaced,"Review logic, test thoroughly",No,Use unit tests (e.g. tSQLt)
+Views,Replaced,Validate referenced objects and logic,No,Check performance impact
+Functions,Replaced,Check return types and logic,No,Test for edge cases
+Triggers,Replaced,Ensure audit or logic is not broken,No,Check for INSTEAD OF behavior
+Constraints,Altered or recreated,Validate CHECK/DEFAULT logic,Yes,Check constraint conditions
+Synonyms,Replaced,Verify referenced objects exist,No,Low risk
+Users/Logins,Ignored,Ensure user restoration post deploy,No,Handle manually
+Permissions,Ignored,Check post-deploy GRANT/REVOKE scripts,No,Use post-deploy scripts
+Static Data,Not affected,Ensure populated separately,Yes,Use post-deploy data scripts
+Sequences,Altered if changed,"Check start, increment values",No,Confirm app logic compatibility
+Schemas,Created/altered,Ensure naming and casing consistency,No,Review schema movements
+CLR Assemblies,Replaced if changed,Verify signing and security level,No,Requires UNSAFE or permissions
+Extended Properties,Replaced,Check for overwriting issues,No,Low risk unless clashing
+Service Broker / CDC,Not supported,Manually handle these features,No,Deploy separately
+Jobs / Linked Servers,Not deployed,Script and deploy manually,No,Keep external to DACPAC

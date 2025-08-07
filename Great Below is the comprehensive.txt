@@ -1,0 +1,205 @@
+Great. Below is the **comprehensive Microsoft Fabric CI/CD documentation** in plain text. You can copy and save this into a `.txt` file.
+
+---
+
+# **Microsoft Fabric CI/CD using GitHub Actions — Comprehensive Documentation**
+
+---
+
+## **1. Overview**
+
+This document outlines a complete CI/CD strategy for deploying Microsoft Fabric artifacts like **Notebooks, Pipelines, Data Warehouses, Lakehouses** using **GitHub Actions**. It also includes best practices, recommended Git structure, parameterization techniques, and deployment strategies.
+
+---
+
+## **2. Prerequisites**
+
+Before setting up the CI/CD pipeline, ensure the following:
+
+* **Microsoft Fabric Environment**
+
+  * Access to a Microsoft Fabric workspace with Contributor or Admin role.
+  * Azure subscription with Fabric license (if needed).
+  * Required artifacts (notebooks, pipelines, lakehouses, warehouses) published in Fabric.
+
+* **GitHub Repository**
+
+  * Repo initialized with Fabric artifacts organized properly.
+  * GitHub Actions enabled.
+  * GitHub secrets configured:
+
+    * `FABRIC_CLIENT_ID`
+    * `FABRIC_CLIENT_SECRET`
+    * `FABRIC_TENANT_ID`
+    * `FABRIC_WORKSPACE_ID`
+    * `FABRIC_SUBSCRIPTION_ID`
+
+* **Fabric Deployment Tooling**
+
+  * Use [Microsoft Fabric CI/CD CLI](https://microsoft.github.io/fabric-cicd/latest/) or REST APIs.
+  * Authentication via service principal or user delegated token.
+
+---
+
+## **3. Git Repository Structure**
+
+A recommended Git layout:
+
+```
+fabric-cicd/
+│
+├── .github/
+│   └── workflows/
+│       ├── deploy-fabric-artifacts.yml
+│       └── deploy-data-warehouse.yml
+│
+├── parameter.yml
+│
+├── notebooks/
+│   └── notebook-name.ipynb
+│
+├── pipelines/
+│   └── pipeline-name.json
+│
+├── lakehouses/
+│   └── lakehouse-name.json
+│
+└── warehouses/
+    └── warehouse-name.sql
+```
+
+---
+
+## **4. Workflows**
+
+You should define **two separate GitHub Actions workflows**:
+
+### **a. Fabric Workspace Deployment**
+
+Handles:
+
+* Notebooks
+* Pipelines
+* Lakehouses
+
+### **b. Data Warehouse Deployment**
+
+Handles:
+
+* SQL scripts for Data Warehouse objects (tables, views, stored procedures)
+
+---
+
+## **5. Parameterization Using `parameter.yml`**
+
+The `parameter.yml` file allows:
+
+* Dynamic configuration of values such as environment-specific parameters, paths, and secrets.
+* Separating config from logic to promote reusability.
+
+**Sample structure:**
+
+```yaml
+environment: dev
+workspace_id: xxxxxxxx
+notebooks:
+  - name: sample-notebook
+    path: notebooks/sample-notebook.ipynb
+pipelines:
+  - name: sample-pipeline
+    path: pipelines/sample-pipeline.json
+```
+
+---
+
+## **6. Deployment Strategy**
+
+### **a. Developer Workspaces**
+
+Each developer works in their own **Fabric Workspace**:
+
+* Promote changes via pull requests to the `main` or `release` branch.
+* Use environment-specific configuration in `parameter.yml`.
+
+### **b. Promotion Flow**
+
+1. **Dev Workspace** → Manual testing
+2. **QA Workspace** → CI validation
+3. **Prod Workspace** → Auto/manual deployment via GitHub Actions
+
+### **c. Triggering Strategy**
+
+* On push to `main` or `release/*` → trigger deployment.
+* Pull Request → run validation only.
+
+---
+
+## **7. Best Practices for Pipelines and Notebooks**
+
+### **a. Modular Design**
+
+* Break pipelines into small, reusable modules.
+* Use naming conventions that describe their purpose (e.g., `ingest_sales_data`, `transform_customer_info`).
+
+### **b. Parameterization**
+
+* Use Fabric pipeline parameters and `parameter.yml` for dynamic deployments.
+* Avoid hardcoded paths or workspace IDs.
+
+### **c. Reusability**
+
+* Use reusable pipelines for repeatable tasks (e.g., ingestion, archiving).
+* Templates should be stored centrally.
+
+### **d. Error Handling**
+
+* Use `try-catch` blocks where available in scripts.
+* Log messages and errors for observability.
+
+### **e. Notebook Tips**
+
+* Keep notebooks clean: remove unnecessary outputs and local variables.
+* Use markdown cells for documentation and logic explanation.
+* Avoid large embedded data or plots unless required.
+
+### **f. CI/CD Optimization**
+
+* Validate syntax during PR using `nbconvert` or custom linter.
+* Use `dry-run` deployment before merging to ensure integrity.
+
+---
+
+## **8. CI/CD Validation Steps**
+
+During the CI phase:
+
+* Validate YAML/JSON/SQL syntax.
+* Ensure all referenced paths in `parameter.yml` exist.
+* Optionally run notebook linting or execution tests.
+* Confirm access to Fabric APIs using service principal.
+
+---
+
+## **9. Artifact-Specific Considerations**
+
+| Artifact  | Format   | Deployment Method      | Notes                        |
+| --------- | -------- | ---------------------- | ---------------------------- |
+| Notebook  | `.ipynb` | REST API or CLI        | Strip metadata before deploy |
+| Pipeline  | `.json`  | REST API or CLI        | Validate schema conformity   |
+| Lakehouse | `.json`  | CLI or script          | Ensure resource existence    |
+| Warehouse | `.sql`   | CLI with SQL execution | Split DDL/DML carefully      |
+
+---
+
+## **10. Future Enhancements (Optional)**
+
+* Add rollback logic (delete/undo deployment).
+* Artifact versioning with tags or commit hashes.
+* Integrate testing notebooks (unit tests).
+* Use GitHub environments and manual approvals for Prod.
+* Leverage monitoring via Azure Log Analytics post-deployment.
+
+---
+
+Let me know if you want this pasted content as a `.txt`, `.pdf`, or `.docx` file again once tool access is restored.
+

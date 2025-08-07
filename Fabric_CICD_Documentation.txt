@@ -1,0 +1,131 @@
+
+Microsoft Fabric CI/CD Documentation
+=====================================
+
+Overview
+--------
+This documentation outlines the CI/CD process for deploying assets to Microsoft Fabric using GitHub Actions. It includes strategies, best practices, folder structure, parameters, and deployment guidelines for Pipelines, Notebooks, Lakehouses, and Warehouses.
+
+Key Topics Covered:
+-------------------
+1. Prerequisites
+2. Git Folder Structure
+3. Parameterization (parameters.yml)
+4. Deployment Strategy
+5. Workflow Division
+6. Best Practices for Building Pipelines and Notebooks
+
+1. Prerequisites
+----------------
+- GitHub repository set up for source control
+- Access to Microsoft Fabric workspace(s)
+- Service principal with deployment permissions
+- GitHub Actions enabled with necessary secrets:
+  - CLIENT_ID
+  - CLIENT_SECRET
+  - TENANT_ID
+  - WORKSPACE_ID
+- Power BI Fabric CLI installed in GitHub runner or via a setup step
+- Parameter YAML file (parameters.yml) with environment-specific mappings
+
+2. Git Folder Structure
+------------------------
+A sample logical structure to organize your source code and assets:
+
+```
+fabric-cicd/
+├── .github/
+│   └── workflows/
+│       ├── workspace-deployment.yml
+│       └── warehouse-deployment.yml
+├── pipelines/
+│   ├── pipeline1.json
+│   └── pipeline2.json
+├── notebooks/
+│   ├── notebook1.ipynb
+│   └── notebook2.ipynb
+├── lakehouses/
+│   └── lakehouse_definitions/
+├── warehouses/
+│   └── schema/
+├── parameter.yml
+└── README.md
+```
+
+3. Parameterization
+--------------------
+Use a central `parameter.yml` file to separate environment-specific values from source code.
+
+Example parameter.yml:
+```
+dev:
+  workspace: "workspace-dev-id"
+  lakehouse: "lakehouse-dev-id"
+  warehouse: "warehouse-dev-id"
+
+prod:
+  workspace: "workspace-prod-id"
+  lakehouse: "lakehouse-prod-id"
+  warehouse: "warehouse-prod-id"
+```
+
+During deployment, GitHub Actions will load the correct section of the file based on the target environment.
+
+4. Deployment Strategy
+-----------------------
+- Developers work in individual workspaces (dev copies).
+- Merge changes into main via pull requests.
+- CI workflow validates changes (linting, structure, etc.).
+- CD workflow deploys to a staging/production workspace via GitHub Actions.
+- Each asset is packaged and pushed through the Fabric REST APIs or Fabric CLI.
+
+5. Workflow Division
+---------------------
+Separate workflows based on asset types:
+- `workspace-deployment.yml`: Handles deployment of notebooks, pipelines, lakehouses.
+- `warehouse-deployment.yml`: Deploys SQL data warehouse assets (DDL, tables, views).
+- Use the `parameter.yml` file to inject environment-specific configuration dynamically.
+
+6. Best Practices for Building Pipelines and Notebooks
+------------------------------------------------------
+
+General Principles:
+- Avoid hardcoded identifiers
+- Build for environment-independence
+- Follow modular design
+- Enable reusability and version control via Git
+- Use parameters.yml for configuration
+
+Notebooks:
+- Declare parameters using `dbutils.widgets.get()` or similar methods
+- Avoid hardcoded paths; build them using parameter inputs
+- Output to clearly defined logical zones (bronze/silver/gold)
+- Add logging and error validation steps
+- Use modular helper notebooks via `%run` command when needed
+
+Pipelines:
+- Parameterize all input values (Lakehouse ID, path, etc.)
+- Leverage expressions and system variables for dynamic behavior
+- Use containers or sub-pipelines for modular logic
+- Add on-failure, on-completion, and retry logic
+- Optionally drive logic using metadata/config tables
+
+Dynamic Deployment:
+- Build assets with placeholders
+- Inject environment-specific values during CD using parameter.yml
+
+Do's and Don'ts:
+----------------
+Do:
+- Use pipeline and notebook parameters
+- Reference config via parameters.yml
+- Add validations and retry policies
+- Modularize logic
+- Write reusable components
+
+Don't:
+- Hardcode any IDs or paths
+- Use static lakehouse/table names
+- Assume success of external calls
+- Put all logic in one monolithic pipeline
+- Mix dev/test/prod logic inside a single script
